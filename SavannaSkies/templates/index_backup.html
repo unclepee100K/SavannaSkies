@@ -1,0 +1,102 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zimbabwe Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); }
+    </style>
+</head>
+<body class="gradient-bg text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <div class="flex flex-col md:flex-row gap-6">
+            <aside class="md:w-1/4 bg-white/10 backdrop-blur-md rounded-2xl p-5 shadow-xl h-fit">
+                <h2 class="text-xl font-bold mb-4 border-b border-white/30 pb-2">⭐ Favorite Cities</h2>
+                <ul class="space-y-2">
+                    {% for fav in favorites %}
+                    <li class="flex justify-between items-center">
+                        <a href="{{ url_for('index', city=fav.city_name) }}" class="hover:underline text-lg">{{ fav.city_name }}</a>
+                        <a href="{{ url_for('delete_favorite', id=fav.id) }}" class="text-red-300 hover:text-red-100 text-sm">🗑️</a>
+                    </li>
+                    {% else %}
+                    <li class="text-white/70">No favorites yet.</li>
+                    {% endfor %}
+                </ul>
+                <form action="{{ url_for('add_favorite') }}" method="post" class="mt-5">
+                    <input type="text" name="city_name" placeholder="City name (e.g., Bulawayo)" class="w-full p-2 rounded-lg text-black mb-2" required>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg transition">➕ Add</button>
+                </form>
+            </aside>
+            <main class="md:w-3/4 space-y-6">
+                <form method="get" action="/" class="flex gap-2">
+                    <input type="text" name="city" placeholder="Search city in Zimbabwe..." value="{{ search_city }}" class="flex-1 p-3 rounded-xl text-black text-lg">
+                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 px-6 rounded-xl transition font-bold">🔍 Search</button>
+                </form>
+                {% if weather %}
+                <div class="bg-white/20 backdrop-blur-md rounded-2xl p-6 shadow-xl transition hover:scale-[1.01]">
+                    <div class="flex flex-col sm:flex-row justify-between items-center">
+                        <div>
+                            <h1 class="text-4xl font-bold">{{ weather.city }}, {{ weather.country }}</h1>
+                            <p class="text-xl mt-1">{{ weather.description }}</p>
+                            <div class="mt-4 text-6xl font-extrabold">{{ weather.temp }}°C</div>
+                            <p class="text-lg">Feels like {{ weather.feels_like }}°C</p>
+                        </div>
+                        <div class="mt-4 sm:mt-0">
+                            <img src="https://openweathermap.org/img/wn/{{ weather.icon }}@4x.png" alt="weather icon" class="w-32 h-32">
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-red-500/70 rounded-2xl p-5 text-center">City not found. Try Harare, Bulawayo, Mutare...</div>
+                {% endif %}
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-5 shadow-xl">
+                    <h2 class="text-2xl font-semibold mb-3">📈 5-Day Temperature Trend</h2>
+                    <canvas id="tempChart" width="400" height="200" class="w-full h-auto"></canvas>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script>
+        const dates = {{ forecast_dates | tojson }};
+        const temps = {{ forecast_temps | tojson }};
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(52, 211, 153, 0.7)');
+        gradient.addColorStop(1, 'rgba(52, 211, 153, 0.1)');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: temps,
+                    borderColor: '#34d399',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fbbf24',
+                    pointBorderColor: '#ffffff',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.raw}°C` } },
+                    legend: { labels: { color: '#ffffff' } }
+                },
+                scales: {
+                    y: { grid: { color: '#ffffff30' }, title: { display: true, text: '°C', color: '#fff' } },
+                    x: { grid: { color: '#ffffff30' }, ticks: { color: '#fff' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zimbabwe Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body.sunny { background: linear-gradient(135deg, #f9d423, #ff4e50); }
+        body.cloudy { background: linear-gradient(135deg, #757f9a, #d7dde8); }
+        body.rainy { background: linear-gradient(135deg, #2c3e50, #3498db); }
+        body.stormy { background: linear-gradient(135deg, #141e30, #243b55); }
+        body.snowy { background: linear-gradient(135deg, #e6e9f0, #eef2f3); }
+        body.default { background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); }
+        .hourly-card { transition: all 0.2s ease; }
+        .hourly-card:hover { transform: translateY(-5px); }
+        .recent-btn { transition: all 0.2s; }
+        .recent-btn:hover { background-color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body class="{{ weather.condition if weather else 'default' }} text-white min-h-screen transition-all duration-500">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <div class="flex justify-end mb-4">
+            <a href="{{ url_for('toggle_units') }}" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-sm transition">
+                Switch to {{ '°F' if units == 'metric' else '°C' }}
+            </a>
+        </div>
+        <div class="flex flex-col md:flex-row gap-6">
+            <aside class="md:w-1/4 bg-white/10 backdrop-blur-md rounded-2xl p-5 shadow-xl h-fit">
+                <h2 class="text-xl font-bold mb-4 border-b border-white/30 pb-2">⭐ Favorite Cities</h2>
+                <ul class="space-y-2">
+                    {% for fav in favorites %}
+                    <li class="flex justify-between items-center">
+                        <a href="{{ url_for('index', city=fav.city_name) }}" class="hover:underline text-lg">{{ fav.city_name }}</a>
+                        <a href="{{ url_for('delete_favorite', id=fav.id) }}" class="text-red-300 hover:text-red-100 text-sm">🗑️</a>
+                    </li>
+                    {% else %}
+                    <li class="text-white/70">No favorites yet.</li>
+                    {% endfor %}
+                </ul>
+                <form action="{{ url_for('add_favorite') }}" method="post" class="mt-5">
+                    <input type="text" name="city_name" placeholder="City name (e.g., Bulawayo)" class="w-full p-2 rounded-lg text-black mb-2" required>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 w-full py-2 rounded-lg transition">➕ Add</button>
+                </form>
+                {% if recent %}
+                <h2 class="text-xl font-bold mt-6 mb-3 border-b border-white/30 pb-2">🕒 Recent</h2>
+                <div class="flex flex-wrap gap-2">
+                    {% for city in recent %}
+                    <a href="{{ url_for('index', city=city) }}" class="recent-btn bg-white/20 px-3 py-1 rounded-full text-sm hover:bg-white/30">{{ city }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </aside>
+            <main class="md:w-3/4 space-y-6">
+                <form method="get" action="/" class="flex gap-2">
+                    <input type="text" name="city" placeholder="Search city in Zimbabwe..." value="{{ search_city }}" class="flex-1 p-3 rounded-xl text-black text-lg">
+                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 px-6 rounded-xl transition font-bold">🔍 Search</button>
+                </form>
+                {% if weather %}
+                <div class="bg-white/20 backdrop-blur-md rounded-2xl p-6 shadow-xl transition hover:scale-[1.01]">
+                    <div class="flex flex-col sm:flex-row justify-between items-center">
+                        <div>
+                            <h1 class="text-4xl font-bold">{{ weather.city }}, {{ weather.country }}</h1>
+                            <p class="text-xl mt-1">{{ weather.description }}</p>
+                            <div class="mt-4 text-6xl font-extrabold">{{ weather.temp }}{{ temp_unit }}</div>
+                            <p class="text-lg">Feels like {{ weather.feels_like }}{{ temp_unit }}</p>
+                            <div class="flex gap-4 mt-3 text-sm">
+                                <span>💧 Humidity: {{ weather.humidity }}%</span>
+                                <span>💨 Wind: {{ weather.wind_speed }} {{ wind_unit }}</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 sm:mt-0">
+                            <img src="https://openweathermap.org/img/wn/{{ weather.icon }}@4x.png" alt="weather icon" class="w-32 h-32">
+                        </div>
+                    </div>
+                </div>
+                {% if hourly %}
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-5 shadow-xl">
+                    <h2 class="text-2xl font-semibold mb-3">⏱️ Next 12 Hours</h2>
+                    <div class="flex overflow-x-auto gap-4 pb-2">
+                        {% for h in hourly %}
+                        <div class="hourly-card bg-white/20 rounded-xl p-3 text-center min-w-[80px]">
+                            <p class="font-bold">{{ h.time }}</p>
+                            <img src="https://openweathermap.org/img/wn/{{ h.icon }}.png" class="w-10 h-10 mx-auto">
+                            <p>{{ h.temp }}{{ temp_unit }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-5 shadow-xl">
+                    <h2 class="text-2xl font-semibold mb-3">📈 5-Day Temperature Trend</h2>
+                    <canvas id="tempChart" width="400" height="200" class="w-full h-auto"></canvas>
+                </div>
+                {% else %}
+                <div class="bg-red-500/70 rounded-2xl p-5 text-center">City not found or API error. Try Harare, Bulawayo, Mutare...</div>
+                {% endif %}
+            </main>
+        </div>
+    </div>
+    <script>
+        const dates = {{ forecast_dates | tojson }};
+        const temps = {{ forecast_temps | tojson }};
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(52, 211, 153, 0.7)');
+        gradient.addColorStop(1, 'rgba(52, 211, 153, 0.1)');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Temperature ({{ temp_unit }})',
+                    data: temps,
+                    borderColor: '#34d399',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fbbf24',
+                    pointBorderColor: '#ffffff',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.raw}{{ temp_unit }}` } },
+                    legend: { labels: { color: '#ffffff' } }
+                },
+                scales: {
+                    y: { grid: { color: '#ffffff30' }, title: { display: true, text: '{{ temp_unit }}', color: '#fff' } },
+                    x: { grid: { color: '#ffffff30' }, ticks: { color: '#fff' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
