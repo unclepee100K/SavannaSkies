@@ -35,7 +35,7 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-API_KEY = "c311270d4cd83f282411da5dc765d1b9"
+API_KEY = ""
 print("DEBUG: API_KEY =", API_KEY[:5] if API_KEY else "MISSING")
 BASE_URL = 'https://api.openweathermap.org/data/2.5'
 
